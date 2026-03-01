@@ -1,11 +1,11 @@
-# agent-im
+# agent-im-python
 
-Python SDK for the Agent-Native IM platform. Let any AI Agent connect in ~10 lines of code.
+Python SDK for the Agent-Native IM (Python SDK) platform. Let any AI Agent connect in ~10 lines of code.
 
 ## Install
 
 ```bash
-pip install agent-im
+pip install agent-im-python
 ```
 
 Or from source:

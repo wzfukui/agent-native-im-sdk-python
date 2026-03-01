@@ -41,6 +41,12 @@ class Context:
         )
         await self._api.send_message(self.conversation_id, layers)
 
+    # --- Conversation ---
+
+    async def update_title(self, title: str) -> None:
+        """Update the conversation title."""
+        await self._api.update_conversation(self.conversation_id, title)
+
     # --- Streaming primitives ---
 
     async def stream_start(

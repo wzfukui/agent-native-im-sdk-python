@@ -70,6 +70,22 @@ class APIClient:
             for c in data
         ]
 
+    async def update_conversation(self, conversation_id: int, title: str) -> Conversation:
+        """Update a conversation's title."""
+        d = await self._request(
+            "PUT",
+            f"/api/v1/conversations/{conversation_id}",
+            json={"title": title},
+        )
+        return Conversation(
+            id=d["id"],
+            user_id=d.get("user_id", 0),
+            bot_id=d.get("bot_id", 0),
+            title=d.get("title", ""),
+            created_at=d.get("created_at", ""),
+            updated_at=d.get("updated_at", ""),
+        )
+
     # --- Message endpoints ---
 
     async def send_message(

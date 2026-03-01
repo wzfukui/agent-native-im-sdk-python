@@ -39,6 +39,7 @@ class Bot:
         self.base_url = base_url.rstrip("/")
         self._transport_type = transport
         self._handler: Callable[[Context, Message], Coroutine] | None = None
+        self._cancel_handler: Callable[[int, str], Coroutine] | None = None  # (conversation_id, stream_id)
         self._bot_id: int = 0
         self._api = APIClient(self.base_url, self.token)
         self._ws: WSTransport | None = None
@@ -47,6 +48,11 @@ class Bot:
     def on_message(self, fn: Callable[[Context, Message], Coroutine]):
         """Decorator to register the message handler."""
         self._handler = fn
+        return fn
+
+    def on_task_cancel(self, fn: Callable[[int, str], Coroutine]):
+        """Decorator to register the task cancellation handler."""
+        self._cancel_handler = fn
         return fn
 
     def run(self):
@@ -105,5 +111,15 @@ class Bot:
             logger.exception("bot: error in message handler")
 
     async def _dispatch_stream(self, stream_type: str, data: dict):
-        """Handle stream events (currently logged, not dispatched to user handler)."""
+        """Handle stream events."""
         logger.debug("bot: stream event %s", stream_type)
+        
+        # Handle task cancellation
+        if stream_type == "task.cancel" and self._cancel_handler:
+            conversation_id = data.get("conversation_id", 0)
+            stream_id = data.get("stream_id", "")
+            if conversation_id and stream_id:
+                try:
+                    await self._cancel_handler(conversation_id, stream_id)
+                except Exception:
+                    logger.exception("bot: error in task cancel handler")

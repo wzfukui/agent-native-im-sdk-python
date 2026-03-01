@@ -61,6 +61,13 @@ class WSTransport:
                             await on_stream(msg_type, data)
                         elif msg_type == "pong":
                             pass  # keepalive response
+                        elif msg_type == "task.cancel":
+                            # Dispatch to cancellation handler
+                            if on_stream:
+                                await on_stream("task.cancel", data)
+                        elif msg_type == "task.cancelled":
+                            if on_stream:
+                                await on_stream("task.cancelled", data)
                         elif msg_type == "error":
                             logger.warning("ws: server error: %s", data)
 
@@ -102,6 +109,14 @@ class WSTransport:
         if stream_type:
             data["stream_type"] = stream_type
         await self.send("message.send", data)
+
+    async def send_task_cancel(self, conversation_id: int, stream_id: str):
+        """Send a task.cancel request to stop a running task."""
+        data: dict[str, Any] = {
+            "conversation_id": conversation_id,
+            "stream_id": stream_id,
+        }
+        await self.send("task.cancel", data)
 
     def stop(self):
         self._running = False

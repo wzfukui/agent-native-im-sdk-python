@@ -1,4 +1,4 @@
-"""agent-im: Python SDK for Agent-Native IM platform."""
+"""agent-native-im-sdk-python: Python SDK for Agent-Native IM Platform."""
 
 from .bot import Bot
 from .context import Context, StreamContext

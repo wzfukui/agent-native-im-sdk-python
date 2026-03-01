@@ -1,24 +1,40 @@
-# agent-im-python
+# agent-native-im-sdk-python
 
-Python SDK for the Agent-Native IM (Python SDK) platform. Let any AI Agent connect in ~10 lines of code.
+Python SDK for Agent-Native IM Platform — 让任何 AI Agent 约 10 行代码快速接入。
 
-## Install
+## 项目背景
+
+本项目是 **Agent-Native IM** 平台的 Python SDK，供 AI Agent 接入平台使用。
+
+**后端服务**：https://github.com/wzfukui/agent-native-im
+
+## 特性
+
+- 🌐 **WebSocket & Polling** 两种传输模式
+- 📡 **实时消息** 接收与处理
+- 🔄 **流式响应** 支持 (thinking / status / progress)
+- 🤖 **任务取消** 支持
+- 📝 **交互式消息** (choice / confirm / form)
+- 🔌 **开箱即用** ~10 行代码快速接入
+
+## 安装
 
 ```bash
-pip install agent-im-python
+pip install agent-native-im-sdk-python
 ```
 
-Or from source:
+或从源码安装：
 
 ```bash
-cd sdks/python
+git clone https://github.com/wzfukui/agent-native-im-sdk-python.git
+cd agent-native-im-sdk-python
 pip install -e .
 ```
 
-## Quick Start
+## 快速开始
 
 ```python
-from agent_im import Bot
+from agent_native_im_sdk_python import Bot
 
 bot = Bot(token="YOUR_BOT_TOKEN", base_url="http://localhost:9800")
 
@@ -29,66 +45,100 @@ async def handle(ctx, msg):
 bot.run()
 ```
 
-## Streaming
+## 流式响应
 
 ```python
-from agent_im import Bot
+from agent_native_im_sdk_python import Bot
 
 bot = Bot(token="YOUR_BOT_TOKEN", base_url="http://localhost:9800")
 
 @bot.on_message
 async def handle(ctx, msg):
     async with ctx.stream(phase="thinking") as s:
-        await s.update("Analyzing...", progress=0.3)
-        # ... do work ...
+        await s.update("Analyzing your question...", progress=0.2)
+        # ... 做些工作 ...
         await s.update("Almost done...", progress=0.8)
         s.result = "Here's the answer!"
 
 bot.run()
 ```
 
-## Transport Options
+## 传输选项
 
-**WebSocket** (default) — real-time, supports streaming:
+### WebSocket (默认)
+
+实时通信，支持流式响应：
 
 ```python
 bot = Bot(token="xxx", base_url="http://localhost:9800", transport="websocket")
 ```
 
-**Long Polling** — works in serverless / no-WebSocket environments:
+### Long Polling
+
+适用于 Serverless 或无 WebSocket 环境：
 
 ```python
 bot = Bot(token="xxx", base_url="http://localhost:9800", transport="polling")
 ```
 
-Note: Long polling cannot receive `stream.start`/`stream.delta` events (server design limitation).
+注意：Long Polling 模式下无法接收 `stream.start`/`stream.delta` 事件。
+
+## 任务取消
+
+用户可以主动取消正在执行的任务：
+
+```python
+@bot.on_task_cancel
+async def handle_cancel(conv_id, stream_id):
+    print(f"Task cancelled: {stream_id}")
+    # 清理资源、停止处理等
+```
 
 ## API
 
 ### `Bot(token, base_url, transport)`
 
-Main entry point. `transport` is `"websocket"` (default) or `"polling"`.
+主要入口。`transport` 可选 `"websocket"` (默认) 或 `"polling"`。
 
 ### `@bot.on_message`
 
-Decorator to register async message handler `async def handler(ctx, msg)`.
+装饰器注册消息处理器：`async def handler(ctx, msg)`
+
+### `@bot.on_task_cancel`
+
+装饰器注册任务取消处理器：`async def handler(conv_id, stream_id)`
 
 ### `ctx.reply(summary=, thinking=, data=, interaction=)`
 
-Send a persisted reply.
+发送持久化回复消息。
+
+### `ctx.update_title(title)`
+
+更新会话标题。
 
 ### `ctx.stream_start(phase, text, progress)` → `stream_id`
 
-Start a new stream.
+开始流式响应。
 
 ### `ctx.stream_delta(stream_id, summary, progress, text)`
 
-Send ephemeral progress update.
+发送临时进度更新。
 
 ### `ctx.stream_end(stream_id, summary, data)`
 
-End stream with final persisted message.
+结束流式响应，发送最终持久化消息。
 
 ### `async with ctx.stream(phase) as s:`
 
-Context manager for stream lifecycle. Use `s.update(text, progress)` and set `s.result`.
+流式响应上下文管理器。使用 `s.update(text, progress)` 并设置 `s.result`。
+
+## 相关项目
+
+| 项目 | 说明 |
+|------|------|
+| **[agent-native-im](https://github.com/wzfukui/agent-native-im)** | ⭐ 核心后端服务 (Go) |
+| **[agent-native-im-web](https://github.com/wzfukui/agent-native-im-web)** | Web 控制面板 (React) |
+
+## License
+
+MIT

@@ -14,5 +14,8 @@ dependencies = [
     "httpx>=0.27.0",
 ]
 
+[tool.hatch.build.targets.wheel]
+packages = ["agent_im_python"]
+
 [project.urls]
 Repository = "https://github.com/wzfukui/agent-native-im-sdk"

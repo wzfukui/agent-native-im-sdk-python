@@ -26,6 +26,7 @@ class APIClient:
             base_url=self.base_url,
             headers={"Authorization": f"Bearer {token}"},
             timeout=httpx.Timeout(60.0),
+            trust_env=False,
         )
 
     async def close(self):
@@ -45,7 +46,7 @@ class APIClient:
     # --- Bot endpoints ---
 
     async def get_me(self) -> Bot:
-        d = await self._request("GET", "/api/v1/bot/me")
+        d = await self._request("GET", "/api/v1/me")
         return Bot(
             id=d["id"],
             owner_id=d.get("owner_id", 0),

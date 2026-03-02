@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import random
 from typing import Any, Callable, Coroutine
 
 import websockets
@@ -29,10 +30,12 @@ class WSTransport:
         self,
         on_message: Callable[[dict], Coroutine],
         on_stream: Callable[[str, dict], Coroutine] | None = None,
+        on_reconnect: Callable[[], Coroutine] | None = None,
     ):
         """Main loop: connect, receive, dispatch, auto-reconnect with exponential backoff."""
         self._running = True
         backoff = 1.0
+        was_connected = False
 
         while self._running:
             try:
@@ -41,10 +44,16 @@ class WSTransport:
                     ping_interval=25,
                     ping_timeout=60,
                     max_size=64 * 1024,
+                    proxy=None,
                 ) as ws:
                     self._ws = ws
+                    is_reconnect = was_connected
+                    was_connected = True
                     backoff = 1.0  # reset on successful connect
                     logger.info("ws: connected")
+
+                    if is_reconnect and on_reconnect:
+                        await on_reconnect()
 
                     async for raw in ws:
                         try:
@@ -81,8 +90,10 @@ class WSTransport:
             if not self._running:
                 break
 
-            logger.info("ws: reconnecting in %.0fs...", backoff)
-            await asyncio.sleep(backoff)
+            jitter = 0.8 + 0.4 * random.random()
+            delay = backoff * jitter
+            logger.info("ws: reconnecting in %.1fs...", delay)
+            await asyncio.sleep(delay)
             backoff = min(backoff * 2, 30.0)
 
     async def send(self, msg_type: str, data: dict[str, Any]):

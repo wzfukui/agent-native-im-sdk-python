@@ -12,6 +12,8 @@ from .models import (
     StatusLayer,
 )
 from .errors import AgentIMError, APIError, AuthenticationError
+from .tasks import Task, TaskCreate, TaskUpdate
+from .agent import AIAgent, StreamingAIAgent, AgentConfig, ConversationContext, NO_REPLY
 
 __all__ = [
     "Bot",
@@ -27,4 +29,12 @@ __all__ = [
     "AgentIMError",
     "APIError",
     "AuthenticationError",
+    "Task",
+    "TaskCreate",
+    "TaskUpdate",
+    "AIAgent",
+    "StreamingAIAgent",
+    "AgentConfig",
+    "ConversationContext",
+    "NO_REPLY",
 ]

@@ -1,0 +1,42 @@
+[Unit]
+Description=Agent-Native IM Bot Service
+After=network.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=agent
+Group=agent
+WorkingDirectory=/opt/agents/smart-assistant
+
+# Environment variables
+Environment="PYTHONUNBUFFERED=1"
+EnvironmentFile=/opt/agents/smart-assistant/.env
+
+# Start command
+ExecStart=/usr/bin/python3 /opt/agents/smart-assistant/agent.py
+
+# Restart policy
+Restart=always
+RestartSec=10
+StartLimitInterval=200
+StartLimitBurst=5
+
+# Logging
+StandardOutput=append:/var/log/agents/smart-assistant.log
+StandardError=append:/var/log/agents/smart-assistant-error.log
+
+# Process management
+KillMode=mixed
+KillSignal=SIGTERM
+TimeoutStopSec=10
+
+# Security hardening (optional)
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/agents/smart-assistant/memory /var/log/agents
+
+[Install]
+WantedBy=multi-user.target

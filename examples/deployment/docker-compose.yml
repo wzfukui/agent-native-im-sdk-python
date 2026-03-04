@@ -1,0 +1,68 @@
+version: '3.8'
+
+services:
+  smart-assistant:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: agent-im-bot
+    restart: unless-stopped
+
+    environment:
+      - BOT_TOKEN=${BOT_TOKEN}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - AGENT_BASE_URL=${AGENT_BASE_URL:-http://host.docker.internal:9800}
+      - AGENT_MEMORY_DIR=/data/memory
+      - AGENT_LOG_DIR=/data/logs
+      - PYTHONUNBUFFERED=1
+
+    volumes:
+      # Persistent data
+      - agent-data:/data
+
+      # Mount skill file
+      - ./smart_assistant.skill.json:/app/smart_assistant.skill.json:ro
+
+      # Mount custom agent script (for development)
+      # - ./agent.py:/app/agent.py:ro
+
+    networks:
+      - agent-network
+
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 128M
+
+  # Optional: Log viewer
+  log-viewer:
+    image: amir20/dozzle:latest
+    container_name: agent-log-viewer
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - agent-network
+    profiles:
+      - debug
+
+volumes:
+  agent-data:
+    name: agent-im-data
+
+networks:
+  agent-network:
+    name: agent-im-network

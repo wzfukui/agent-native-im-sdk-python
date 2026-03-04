@@ -132,6 +132,8 @@ class WSTransport:
     def stop(self):
         self._running = False
         if self._ws:
-            asyncio.get_event_loop().call_soon_threadsafe(
-                asyncio.ensure_future, self._ws.close()
-            )
+            loop = asyncio.get_event_loop()
+            if loop.is_running():
+                asyncio.create_task(self._ws.close())
+            else:
+                loop.run_until_complete(self._ws.close())

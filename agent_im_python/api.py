@@ -15,10 +15,11 @@ from .models import (
     _dict_to_message,
     _layers_to_dict,
 )
+from .tasks import TaskMixin
 
 
-class APIClient:
-    """Low-level async HTTP client for the Agent-Native IM API."""
+class APIClient(TaskMixin):
+    """Low-level async HTTP client for the Agent-Native IM API with task management."""
 
     def __init__(self, base_url: str, token: str):
         self.base_url = base_url.rstrip("/")
@@ -40,7 +41,8 @@ class APIClient:
             raise AuthenticationError()
         body = resp.json()
         if not body.get("ok"):
-            raise APIError(resp.status_code, body.get("error", "unknown error"))
+            # Use new structured error handling (v2.3+ compatible)
+            raise APIError.from_response(resp.status_code, body)
         return body.get("data")
 
     # --- Bot endpoints ---

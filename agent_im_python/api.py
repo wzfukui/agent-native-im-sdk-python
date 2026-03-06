@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from typing import Any
 
+import os
+
 import httpx
 
 from .errors import APIError, AuthenticationError
@@ -173,7 +175,6 @@ class APIClient(TaskMixin):
 
     async def upload_file(self, file_path: str) -> dict[str, Any]:
         """Upload a file from disk. Returns dict with 'url', 'filename', 'size'."""
-        import os
         filename = os.path.basename(file_path)
         with open(file_path, "rb") as f:
             d = await self._request(

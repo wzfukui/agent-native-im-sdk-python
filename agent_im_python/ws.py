@@ -68,12 +68,17 @@ class WSTransport:
                         if msg_type == "message.new":
                             await on_message(data)
                         elif msg_type == "message.reaction_updated":
-                            # Pass reaction events through stream handler
                             if on_stream:
-                                await on_stream(msg_type, data)
+                                try:
+                                    await on_stream(msg_type, data)
+                                except Exception:
+                                    logger.exception("ws: error in reaction handler")
                         elif msg_type == "entity.config":
                             if on_config:
-                                await on_config(data)
+                                try:
+                                    await on_config(data)
+                                except Exception:
+                                    logger.exception("ws: error in config handler")
                             else:
                                 logger.debug("ws: entity config received: %s", data)
                         elif msg_type.startswith("stream.") and on_stream:

@@ -40,10 +40,12 @@ class Bot:
         self._transport_type = transport
         self._handler: Callable[[Context, Message], Coroutine] | None = None
         self._cancel_handler: Callable[[int, str], Coroutine] | None = None  # (conversation_id, stream_id)
+        self._config_handler: Callable[[dict], Coroutine] | None = None
         self._bot_id: int = 0
         self._api = APIClient(self.base_url, self.token)
         self._ws: WSTransport | None = None
         self._polling: PollingTransport | None = None
+        self.subscription_config: dict[int, str] = {}  # conversation_id -> subscription_mode
 
     def on_message(self, fn: Callable[[Context, Message], Coroutine]):
         """Decorator to register the message handler."""
@@ -53,6 +55,11 @@ class Bot:
     def on_task_cancel(self, fn: Callable[[int, str], Coroutine]):
         """Decorator to register the task cancellation handler."""
         self._cancel_handler = fn
+        return fn
+
+    def on_config(self, fn: Callable[[dict], Coroutine]):
+        """Decorator to register the entity config handler (subscription modes)."""
+        self._config_handler = fn
         return fn
 
     def run(self):
@@ -71,6 +78,7 @@ class Bot:
             await self._ws.receive_loop(
                 on_message=self._dispatch_message,
                 on_stream=self._dispatch_stream,
+                on_config=self._dispatch_config,
             )
         else:
             self._polling = PollingTransport(self._api)
@@ -113,7 +121,7 @@ class Bot:
     async def _dispatch_stream(self, stream_type: str, data: dict):
         """Handle stream events."""
         logger.debug("bot: stream event %s", stream_type)
-        
+
         # Handle task cancellation
         if stream_type == "task.cancel" and self._cancel_handler:
             conversation_id = data.get("conversation_id", 0)
@@ -123,3 +131,19 @@ class Bot:
                     await self._cancel_handler(conversation_id, stream_id)
                 except Exception:
                     logger.exception("bot: error in task cancel handler")
+
+    async def _dispatch_config(self, data: dict):
+        """Handle entity.config event — store subscription modes."""
+        conversations = data.get("conversations", [])
+        for conv in conversations:
+            conv_id = conv.get("conversation_id", 0)
+            mode = conv.get("subscription_mode", "mention_only")
+            if conv_id:
+                self.subscription_config[conv_id] = mode
+        logger.info("bot: subscription config received for %d conversations", len(conversations))
+
+        if self._config_handler:
+            try:
+                await self._config_handler(data)
+            except Exception:
+                logger.exception("bot: error in config handler")

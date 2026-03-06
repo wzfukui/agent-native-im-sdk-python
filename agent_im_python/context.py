@@ -104,6 +104,45 @@ class Context:
                 self.conversation_id, layers, stream_id=stream_id,
             )
 
+    # --- Reactions ---
+
+    async def react(self, message_id: int, emoji: str) -> dict:
+        """Toggle a reaction on a message in this conversation."""
+        return await self._api.toggle_reaction(message_id, emoji)
+
+    # --- Message editing ---
+
+    async def edit_message(self, message_id: int, summary: str = "", data: Any = None) -> None:
+        """Edit a previously sent message."""
+        layers = MessageLayers(summary=summary, data=data)
+        await self._api.edit_message(message_id, layers)
+
+    # --- Memory ---
+
+    async def remember(self, key: str, content: str) -> dict:
+        """Store a memory in this conversation (upsert by key)."""
+        return await self._api.upsert_memory(self.conversation_id, key, content)
+
+    async def recall(self, key: str | None = None) -> list[dict] | dict | None:
+        """Recall memories. If key is given, find that specific memory; otherwise list all."""
+        memories = await self._api.list_memories(self.conversation_id)
+        if key is None:
+            return memories
+        for m in memories:
+            if m.get("key") == key:
+                return m
+        return None
+
+    async def forget(self, memory_id: int) -> None:
+        """Delete a memory by ID."""
+        await self._api.delete_memory(self.conversation_id, memory_id)
+
+    # --- File upload ---
+
+    async def upload_file(self, file_path: str) -> dict:
+        """Upload a file and return its URL info."""
+        return await self._api.upload_file(file_path)
+
     # --- Convenience helpers ---
 
     async def stream_status(

@@ -124,6 +124,74 @@ class APIClient(TaskMixin):
         messages = [_dict_to_message(m) for m in d.get("messages", [])]
         return messages, d.get("has_more", False)
 
+    # --- Reactions ---
+
+    async def toggle_reaction(self, message_id: int, emoji: str) -> dict[str, Any]:
+        """Toggle a reaction on a message (add if not exists, remove if exists).
+
+        Returns dict with 'reactions' key containing updated reaction summaries.
+        """
+        d = await self._request(
+            "POST",
+            f"/api/v1/messages/{message_id}/reactions",
+            json={"emoji": emoji},
+        )
+        return d
+
+    # --- Message editing ---
+
+    async def edit_message(self, message_id: int, layers: MessageLayers) -> Message:
+        """Edit a previously sent message's layers."""
+        d = await self._request(
+            "PUT",
+            f"/api/v1/messages/{message_id}",
+            json={"layers": _layers_to_dict(layers)},
+        )
+        return _dict_to_message(d)
+
+    # --- Memory ---
+
+    async def list_memories(self, conversation_id: int) -> list[dict[str, Any]]:
+        """List all memories for a conversation."""
+        d = await self._request("GET", f"/api/v1/conversations/{conversation_id}/memories")
+        return d.get("memories", []) if d else []
+
+    async def upsert_memory(self, conversation_id: int, key: str, content: str) -> dict[str, Any]:
+        """Create or update a memory by key."""
+        d = await self._request(
+            "POST",
+            f"/api/v1/conversations/{conversation_id}/memories",
+            json={"key": key, "content": content},
+        )
+        return d
+
+    async def delete_memory(self, conversation_id: int, memory_id: int) -> None:
+        """Delete a memory by ID."""
+        await self._request("DELETE", f"/api/v1/conversations/{conversation_id}/memories/{memory_id}")
+
+    # --- File upload ---
+
+    async def upload_file(self, file_path: str) -> dict[str, Any]:
+        """Upload a file from disk. Returns dict with 'url', 'filename', 'size'."""
+        import os
+        filename = os.path.basename(file_path)
+        with open(file_path, "rb") as f:
+            d = await self._request(
+                "POST",
+                "/api/v1/files/upload",
+                files={"file": (filename, f)},
+            )
+        return d
+
+    async def upload_file_content(self, filename: str, content: bytes, mime_type: str = "application/octet-stream") -> dict[str, Any]:
+        """Upload file content directly. Returns dict with 'url', 'filename', 'size'."""
+        d = await self._request(
+            "POST",
+            "/api/v1/files/upload",
+            files={"file": (filename, content, mime_type)},
+        )
+        return d
+
     # --- Long polling ---
 
     async def get_updates(self, offset: int = 0, timeout: int = 30) -> list[Message]:

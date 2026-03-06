@@ -31,6 +31,7 @@ class WSTransport:
         on_message: Callable[[dict], Coroutine],
         on_stream: Callable[[str, dict], Coroutine] | None = None,
         on_reconnect: Callable[[], Coroutine] | None = None,
+        on_config: Callable[[dict], Coroutine] | None = None,
     ):
         """Main loop: connect, receive, dispatch, auto-reconnect with exponential backoff."""
         self._running = True
@@ -66,6 +67,15 @@ class WSTransport:
 
                         if msg_type == "message.new":
                             await on_message(data)
+                        elif msg_type == "message.reaction_updated":
+                            # Pass reaction events through stream handler
+                            if on_stream:
+                                await on_stream(msg_type, data)
+                        elif msg_type == "entity.config":
+                            if on_config:
+                                await on_config(data)
+                            else:
+                                logger.debug("ws: entity config received: %s", data)
                         elif msg_type.startswith("stream.") and on_stream:
                             await on_stream(msg_type, data)
                         elif msg_type == "pong":

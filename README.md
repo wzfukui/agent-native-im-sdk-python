@@ -39,7 +39,7 @@ pip install -e .
 ## 快速开始
 
 ```python
-from agent_native_im_sdk_python import Bot
+from agent_im_python import Bot
 
 bot = Bot(token="YOUR_BOT_TOKEN", base_url="http://localhost:9800")
 
@@ -53,7 +53,7 @@ bot.run()
 ## 流式响应
 
 ```python
-from agent_native_im_sdk_python import Bot
+from agent_im_python import Bot
 
 bot = Bot(token="YOUR_BOT_TOKEN", base_url="http://localhost:9800")
 
@@ -161,6 +161,10 @@ async def handle_cancel(conv_id, stream_id):
 ### `ctx.stream_end(stream_id, summary, data)`
 
 结束流式响应，发送最终持久化消息。
+
+### `ctx.send_file(file_path, summary="")`
+
+上传文件并发送文件消息（内部自动调用 upload + send file message）。
 
 ### `async with ctx.stream(phase) as s:`
 

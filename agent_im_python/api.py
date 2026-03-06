@@ -39,9 +39,17 @@ class APIClient(TaskMixin):
 
     async def _request(self, method: str, path: str, **kwargs) -> Any:
         resp = await self._client.request(method, path, **kwargs)
+        try:
+            body = resp.json()
+        except ValueError:
+            body = {"ok": False, "error": resp.text or f"HTTP {resp.status_code}"}
+
         if resp.status_code == 401:
             raise AuthenticationError()
-        body = resp.json()
+        if resp.status_code == 204:
+            return None
+        if resp.status_code >= 400:
+            raise APIError.from_response(resp.status_code, body)
         if not body.get("ok"):
             # Use new structured error handling (v2.3+ compatible)
             raise APIError.from_response(resp.status_code, body)
@@ -66,9 +74,11 @@ class APIClient(TaskMixin):
         return [
             Conversation(
                 id=c["id"],
+                public_id=c.get("public_id", "") or ((c.get("metadata") or {}).get("public_id", "")),
                 user_id=c.get("user_id", 0),
                 bot_id=c.get("bot_id", 0),
                 title=c.get("title", ""),
+                metadata=c.get("metadata", {}) or {},
                 created_at=c.get("created_at", ""),
                 updated_at=c.get("updated_at", ""),
             )
@@ -84,9 +94,11 @@ class APIClient(TaskMixin):
         )
         return Conversation(
             id=d["id"],
+            public_id=d.get("public_id", "") or ((d.get("metadata") or {}).get("public_id", "")),
             user_id=d.get("user_id", 0),
             bot_id=d.get("bot_id", 0),
             title=d.get("title", ""),
+            metadata=d.get("metadata", {}) or {},
             created_at=d.get("created_at", ""),
             updated_at=d.get("updated_at", ""),
         )
@@ -98,6 +110,10 @@ class APIClient(TaskMixin):
         conversation_id: int,
         layers: MessageLayers,
         stream_id: str = "",
+        content_type: str = "",
+        attachments: list[dict[str, Any]] | None = None,
+        mentions: list[int] | None = None,
+        reply_to: int | None = None,
     ) -> Message:
         payload: dict[str, Any] = {
             "conversation_id": conversation_id,
@@ -105,6 +121,14 @@ class APIClient(TaskMixin):
         }
         if stream_id:
             payload["stream_id"] = stream_id
+        if content_type:
+            payload["content_type"] = content_type
+        if attachments:
+            payload["attachments"] = attachments
+        if mentions:
+            payload["mentions"] = mentions
+        if reply_to is not None:
+            payload["reply_to"] = reply_to
         d = await self._request("POST", "/api/v1/messages/send", json=payload)
         return _dict_to_message(d)
 
@@ -192,6 +216,30 @@ class APIClient(TaskMixin):
             files={"file": (filename, content, mime_type)},
         )
         return d
+
+    async def send_file_message(
+        self,
+        conversation_id: int,
+        file_path: str,
+        summary: str = "",
+        stream_id: str = "",
+    ) -> Message:
+        """Upload a file then send it as a file message."""
+        uploaded = await self.upload_file(file_path)
+        attachment = {
+            "type": "file",
+            "url": uploaded.get("url", ""),
+            "filename": uploaded.get("filename", ""),
+            "mime_type": uploaded.get("mime_type", ""),
+            "size": uploaded.get("size", 0),
+        }
+        return await self.send_message(
+            conversation_id=conversation_id,
+            layers=MessageLayers(summary=summary),
+            stream_id=stream_id,
+            content_type="file",
+            attachments=[attachment],
+        )
 
     # --- Long polling ---
 

@@ -143,6 +143,10 @@ class Context:
         """Upload a file and return its URL info."""
         return await self._api.upload_file(file_path)
 
+    async def send_file(self, file_path: str, summary: str = "") -> None:
+        """Upload and send a file message in the current conversation."""
+        await self._api.send_file_message(self.conversation_id, file_path, summary=summary)
+
     # --- Convenience helpers ---
 
     async def stream_status(

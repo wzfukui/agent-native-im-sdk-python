@@ -40,8 +40,15 @@ class Message:
     id: int = 0
     conversation_id: int = 0
     stream_id: str = ""
+    content_type: str = ""
     sender_type: str = ""  # "user" or "bot"
     sender_id: int = 0
+    attachments: list[dict[str, Any]] = field(default_factory=list)
+    mentions: list[int] = field(default_factory=list)
+    mentioned_entity_ids: list[int] = field(default_factory=list)
+    reply_to: int | None = None
+    reactions: list[dict[str, Any]] = field(default_factory=list)
+    edited_at: str = ""
     layers: MessageLayers = field(default_factory=MessageLayers)
     created_at: str = ""
 
@@ -58,9 +65,11 @@ class Bot:
 @dataclass
 class Conversation:
     id: int = 0
+    public_id: str = ""
     user_id: int = 0
     bot_id: int = 0
     title: str = ""
+    metadata: dict[str, Any] = field(default_factory=dict)
     created_at: str = ""
     updated_at: str = ""
 
@@ -121,8 +130,15 @@ def _dict_to_message(d: dict) -> Message:
         id=d.get("id", 0),
         conversation_id=d.get("conversation_id", 0),
         stream_id=d.get("stream_id", ""),
+        content_type=d.get("content_type", ""),
         sender_type=d.get("sender_type", ""),
         sender_id=d.get("sender_id", 0),
+        attachments=d.get("attachments", []) or [],
+        mentions=d.get("mentions", []) or [],
+        mentioned_entity_ids=d.get("mentioned_entity_ids", []) or [],
+        reply_to=d.get("reply_to"),
+        reactions=d.get("reactions", []) or [],
+        edited_at=d.get("edited_at", ""),
         layers=_dict_to_layers(d.get("layers")),
         created_at=d.get("created_at", ""),
     )

@@ -166,6 +166,14 @@ async def handle_cancel(conv_id, stream_id):
 
 上传文件并发送文件消息（内部自动调用 upload + send file message）。
 
+### `bot.api.get_entity_self_check(entity_id)` / `get_entity_diagnostics(entity_id)`
+
+查询 Bot 接入就绪状态与运行诊断数据（连接数、断连计数、凭证状态）。
+
+### `bot.api.regenerate_entity_token(entity_id)`
+
+触发 Bot Token 轮换，返回新的 API key（会撤销旧 key 并断开当前会话）。
+
 ### `async with ctx.stream(phase) as s:`
 
 流式响应上下文管理器。使用 `s.update(text, progress)` 并设置 `s.result`。

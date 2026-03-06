@@ -1,7 +1,7 @@
 """Custom exceptions for agent-im SDK with v2.3+ structured error support."""
 
 from typing import Optional, Dict, Any
-from datetime import datetime
+from datetime import datetime, timezone
 
 
 class AgentIMError(Exception):
@@ -24,7 +24,7 @@ class APIError(AgentIMError):
         self.code = code or "UNKNOWN"
         self.request_id = request_id
         self.details = details or {}
-        self.timestamp = datetime.utcnow().isoformat() + "Z"
+        self.timestamp = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
 
         # Format error message
         error_msg = f"API error {status_code}: {message}"

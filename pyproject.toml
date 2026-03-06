@@ -15,7 +15,12 @@ dependencies = [
 ]
 
 [tool.hatch.build.targets.wheel]
-packages = ["agent_im_python"]
+packages = ["agent_im_python", "agent_native_im_sdk_python"]
 
 [project.urls]
-Repository = "https://github.com/wzfukui/agent-native-im-sdk"
+Repository = "https://github.com/wzfukui/agent-native-im-sdk-python"
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0.0",
+]

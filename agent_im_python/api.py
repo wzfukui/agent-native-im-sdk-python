@@ -67,6 +67,21 @@ class APIClient(TaskMixin):
             created_at=d.get("created_at", ""),
         )
 
+    async def get_entity_self_check(self, entity_id: int) -> dict[str, Any]:
+        """Get readiness diagnostics for one owned entity."""
+        d = await self._request("GET", f"/api/v1/entities/{entity_id}/self-check")
+        return d or {}
+
+    async def get_entity_diagnostics(self, entity_id: int) -> dict[str, Any]:
+        """Get runtime diagnostics for one owned entity."""
+        d = await self._request("GET", f"/api/v1/entities/{entity_id}/diagnostics")
+        return d or {}
+
+    async def regenerate_entity_token(self, entity_id: int) -> dict[str, Any]:
+        """Rotate one owned entity token and return new API key."""
+        d = await self._request("POST", f"/api/v1/entities/{entity_id}/regenerate-token")
+        return d or {}
+
     # --- Conversation endpoints ---
 
     async def list_conversations(self) -> list[Conversation]:

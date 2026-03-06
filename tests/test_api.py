@@ -52,3 +52,27 @@ def test_list_conversations_parses_public_id_from_metadata():
     conversations = run(client.list_conversations())
     assert conversations[0].public_id == "9ed5d8d2-5a70-4f6c-af7f-55f6e5f9e29f"
     run(client.close())
+
+
+def test_entity_ops_paths():
+    called = {"path": ""}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        called["path"] = request.url.path
+        return httpx.Response(200, json={"ok": True, "data": {"entity_id": 7}})
+
+    client = APIClient("http://example.test", "token")
+    client._client = httpx.AsyncClient(
+        base_url="http://example.test",
+        transport=httpx.MockTransport(handler),
+    )
+
+    run(client.get_entity_self_check(7))
+    assert called["path"] == "/api/v1/entities/7/self-check"
+
+    run(client.get_entity_diagnostics(7))
+    assert called["path"] == "/api/v1/entities/7/diagnostics"
+
+    run(client.regenerate_entity_token(7))
+    assert called["path"] == "/api/v1/entities/7/regenerate-token"
+    run(client.close())

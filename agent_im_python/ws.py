@@ -66,7 +66,10 @@ class WSTransport:
                         data = envelope.get("data", {})
 
                         if msg_type == "message.new":
-                            await on_message(data)
+                            try:
+                                await on_message(data)
+                            except Exception:
+                                logger.exception("ws: error in message handler")
                         elif msg_type == "message.reaction_updated":
                             if on_stream:
                                 try:
@@ -82,16 +85,24 @@ class WSTransport:
                             else:
                                 logger.debug("ws: entity config received: %s", data)
                         elif msg_type.startswith("stream.") and on_stream:
-                            await on_stream(msg_type, data)
+                            try:
+                                await on_stream(msg_type, data)
+                            except Exception:
+                                logger.exception("ws: error in stream handler")
                         elif msg_type == "pong":
                             pass  # keepalive response
                         elif msg_type == "task.cancel":
-                            # Dispatch to cancellation handler
                             if on_stream:
-                                await on_stream("task.cancel", data)
+                                try:
+                                    await on_stream("task.cancel", data)
+                                except Exception:
+                                    logger.exception("ws: error in task.cancel handler")
                         elif msg_type == "task.cancelled":
                             if on_stream:
-                                await on_stream("task.cancelled", data)
+                                try:
+                                    await on_stream("task.cancelled", data)
+                                except Exception:
+                                    logger.exception("ws: error in task.cancelled handler")
                         elif msg_type == "error":
                             logger.warning("ws: server error: %s", data)
 

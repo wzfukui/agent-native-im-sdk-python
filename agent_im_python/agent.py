@@ -303,7 +303,14 @@ class StreamingAIAgent(AIAgent):
             response = await self.process_message(msg, context)
             if response is NO_REPLY:
                 return NO_REPLY
-            s.result = response if isinstance(response, str) else response.get("summary", "")
+            if isinstance(response, str):
+                s.result = response
+            elif hasattr(response, "summary"):
+                s.result = response.summary
+            elif isinstance(response, dict):
+                s.result = response.get("summary", "")
+            else:
+                s.result = str(response) if response else ""
 
     async def _handle_message(self, ctx: Context, msg: Message):
         """Override to use streaming handler."""

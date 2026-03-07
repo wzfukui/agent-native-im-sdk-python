@@ -66,6 +66,10 @@ class Bot:
         """Synchronous entry point — runs the event loop."""
         asyncio.run(self.start())
 
+    async def run_async(self):
+        """Async entry point — alias for start()."""
+        await self.start()
+
     async def start(self):
         """Async entry point — connect and start receiving."""
         # Verify connectivity

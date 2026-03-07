@@ -266,6 +266,21 @@ class APIClient(TaskMixin):
         """Delete a memory by ID."""
         await self._request("DELETE", f"/api/v1/conversations/{conversation_id}/memories/{memory_id}")
 
+    # --- Entity search ---
+
+    async def search_entities(self, capability: str) -> list[dict[str, Any]]:
+        """Search for entities by capability.
+
+        Searches metadata.capabilities.skills and metadata.tags.
+        Returns list of entity dicts with 'online' status.
+        """
+        d = await self._request(
+            "GET",
+            "/api/v1/entities/search",
+            params={"capability": capability},
+        )
+        return d if isinstance(d, list) else []
+
     # --- File upload ---
 
     async def upload_file(self, file_path: str) -> dict[str, Any]:

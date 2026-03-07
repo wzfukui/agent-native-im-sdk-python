@@ -18,10 +18,31 @@ class Context:
         conversation_id: int,
         api: APIClient,
         send_ws_fn=None,
+        memories: dict[str, str] | None = None,
+        prompt: str = "",
     ):
         self.conversation_id = conversation_id
         self._api = api
         self._send_ws = send_ws_fn
+        self.memories: dict[str, str] = memories or {}
+        self.prompt: str = prompt
+
+    # --- System context ---
+
+    def get_system_context(self) -> str:
+        """Build system context string from prompt + memories.
+
+        Use this to inject conversation context into LLM system prompts::
+
+            system = ctx.get_system_context() + "\\n\\n" + my_base_prompt
+        """
+        parts = []
+        if self.prompt:
+            parts.append(f"## Conversation Prompt\n{self.prompt}")
+        if self.memories:
+            mem_lines = [f"- {k}: {v}" for k, v in self.memories.items()]
+            parts.append("## Conversation Memories\n" + "\n".join(mem_lines))
+        return "\n\n".join(parts)
 
     # --- Simple reply ---
 
@@ -116,6 +137,73 @@ class Context:
         """Edit a previously sent message."""
         layers = MessageLayers(summary=summary, data=data)
         await self._api.edit_message(message_id, layers)
+
+    # --- Structured mention ---
+
+    async def mention(
+        self,
+        entity_ids: list[int],
+        summary: str,
+        intent_type: str = "task_assign",
+        instruction: str = "",
+        priority: str = "medium",
+        context_refs: list[dict] | None = None,
+    ) -> None:
+        """Send a message with structured mention intent.
+
+        intent_type: "task_assign", "question", "review", or "fyi"
+        """
+        data: dict[str, Any] = {
+            "mention_intent": {
+                "type": intent_type,
+                "target_entities": entity_ids,
+                "instruction": instruction or summary,
+                "priority": priority,
+            }
+        }
+        if context_refs:
+            data["mention_intent"]["context_refs"] = context_refs
+
+        layers = MessageLayers(summary=summary, data=data)
+        await self._api.send_message(
+            self.conversation_id,
+            layers,
+            mentions=entity_ids,
+        )
+
+    # --- Task handover ---
+
+    async def handover(
+        self,
+        assign_to: list[int],
+        summary: str,
+        deliverables: list[dict[str, Any]] | None = None,
+        task_id: int | None = None,
+        handover_type: str = "task_completion",
+        context: dict[str, Any] | None = None,
+    ) -> None:
+        """Send a structured task handover to other agents.
+
+        handover_type: "task_completion", "bug_report", "review_request", "status_report"
+        """
+        handover_data: dict[str, Any] = {
+            "handover_type": handover_type,
+            "assign_to": assign_to,
+        }
+        if task_id is not None:
+            handover_data["task_id"] = task_id
+        if deliverables:
+            handover_data["deliverables"] = deliverables
+        if context:
+            handover_data["context"] = context
+
+        layers = MessageLayers(summary=summary, data=handover_data)
+        await self._api.send_message(
+            self.conversation_id,
+            layers,
+            content_type="task_handover",
+            mentions=assign_to,
+        )
 
     # --- Memory ---
 

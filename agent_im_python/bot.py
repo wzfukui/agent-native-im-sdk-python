@@ -39,6 +39,7 @@ class Bot:
         self.base_url = base_url.rstrip("/")
         self._transport_type = transport
         self._handler: Callable[[Context, Message], Coroutine] | None = None
+        self._handover_handler: Callable[[Context, Message, dict], Coroutine] | None = None
         self._cancel_handler: Callable[[int, str], Coroutine] | None = None  # (conversation_id, stream_id)
         self._config_handler: Callable[[dict], Coroutine] | None = None
         self._bot_id: int = 0
@@ -46,6 +47,8 @@ class Bot:
         self._ws: WSTransport | None = None
         self._polling: PollingTransport | None = None
         self.subscription_config: dict[int, str] = {}  # conversation_id -> subscription_mode
+        self._memory_cache: dict[int, dict[str, str]] = {}  # conv_id -> {key: content}
+        self._prompt_cache: dict[int, str] = {}  # conv_id -> prompt
 
     def on_message(self, fn: Callable[[Context, Message], Coroutine]):
         """Decorator to register the message handler."""
@@ -55,6 +58,15 @@ class Bot:
     def on_task_cancel(self, fn: Callable[[int, str], Coroutine]):
         """Decorator to register the task cancellation handler."""
         self._cancel_handler = fn
+        return fn
+
+    def on_handover(self, fn: Callable[[Context, Message, dict], Coroutine]):
+        """Decorator to register the task handover handler.
+
+        Called when a message with content_type='task_handover' is received.
+        The third argument is the parsed handover data from layers.data.
+        """
+        self._handover_handler = fn
         return fn
 
     def on_config(self, fn: Callable[[dict], Coroutine]):
@@ -108,14 +120,30 @@ class Bot:
         if msg.sender_type == "bot" and msg.sender_id == self._bot_id:
             return
 
-        if self._handler is None:
-            return
+        # Auto-load conversation memories + prompt
+        memories, prompt = await self._get_conversation_context(msg.conversation_id)
 
         ctx = Context(
             conversation_id=msg.conversation_id,
             api=self._api,
             send_ws_fn=self._ws.send_message if self._ws else None,
+            memories=memories,
+            prompt=prompt,
         )
+
+        # Dispatch task_handover to dedicated handler if registered
+        if msg.content_type == "task_handover" and self._handover_handler is not None:
+            handover_data = {}
+            if isinstance(msg.layers.data, dict):
+                handover_data = msg.layers.data
+            try:
+                await self._handover_handler(ctx, msg, handover_data)
+            except Exception:
+                logger.exception("bot: error in handover handler")
+            return
+
+        if self._handler is None:
+            return
 
         try:
             await self._handler(ctx, msg)
@@ -126,6 +154,15 @@ class Bot:
         """Handle stream events."""
         logger.debug("bot: stream event %s", stream_type)
 
+        # Handle memory updates — invalidate cache
+        if stream_type == "conversation.memory_updated":
+            conv_id = data.get("conversation_id", 0)
+            if conv_id and conv_id in self._memory_cache:
+                del self._memory_cache[conv_id]
+                self._prompt_cache.pop(conv_id, None)
+                logger.debug("bot: invalidated memory cache for conv %d", conv_id)
+            return
+
         # Handle task cancellation
         if stream_type == "task.cancel" and self._cancel_handler:
             conversation_id = data.get("conversation_id", 0)
@@ -135,6 +172,27 @@ class Bot:
                     await self._cancel_handler(conversation_id, stream_id)
                 except Exception:
                     logger.exception("bot: error in task cancel handler")
+
+    async def _get_conversation_context(self, conv_id: int) -> tuple[dict[str, str], str]:
+        """Load memories and prompt for a conversation, using cache."""
+        if conv_id in self._memory_cache:
+            return self._memory_cache[conv_id], self._prompt_cache.get(conv_id, "")
+
+        try:
+            result = await self._api.get_conversation_context(conv_id)
+            memories = {}
+            for m in result.get("memories", []):
+                key = m.get("key", "")
+                content = m.get("content", "")
+                if key:
+                    memories[key] = content
+            prompt = result.get("prompt", "")
+            self._memory_cache[conv_id] = memories
+            self._prompt_cache[conv_id] = prompt
+            return memories, prompt
+        except Exception:
+            logger.debug("bot: failed to load context for conv %d", conv_id)
+            return {}, ""
 
     async def _dispatch_config(self, data: dict):
         """Handle entity.config event — store subscription modes."""

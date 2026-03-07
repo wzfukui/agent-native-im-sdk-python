@@ -89,6 +89,11 @@ class WSTransport:
                                 await on_stream(msg_type, data)
                             except Exception:
                                 logger.exception("ws: error in stream handler")
+                        elif msg_type.startswith("conversation.") and on_stream:
+                            try:
+                                await on_stream(msg_type, data)
+                            except Exception:
+                                logger.exception("ws: error in conversation event handler")
                         elif msg_type == "pong":
                             pass  # keepalive response
                         elif msg_type == "task.cancel":

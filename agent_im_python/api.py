@@ -100,6 +100,51 @@ class APIClient(TaskMixin):
             for c in data
         ]
 
+    async def create_conversation(
+        self,
+        participant_ids: list[int],
+        title: str = "",
+        conv_type: str = "dm",
+        description: str = "",
+    ) -> Conversation:
+        """Create a new conversation with the given participants.
+
+        conv_type: "dm" for direct, "group" or "channel" for multi-party.
+        The calling entity is automatically added as a participant.
+        """
+        payload: dict[str, Any] = {"participant_ids": participant_ids}
+        if title:
+            payload["title"] = title
+        if conv_type != "dm":
+            payload["conv_type"] = conv_type
+        if description:
+            payload["description"] = description
+        d = await self._request("POST", "/api/v1/conversations", json=payload)
+        return Conversation(
+            id=d["id"],
+            public_id=d.get("public_id", "") or ((d.get("metadata") or {}).get("public_id", "")),
+            user_id=d.get("user_id", 0),
+            bot_id=d.get("bot_id", 0),
+            title=d.get("title", ""),
+            metadata=d.get("metadata", {}) or {},
+            created_at=d.get("created_at", ""),
+            updated_at=d.get("updated_at", ""),
+        )
+
+    async def add_participant(
+        self,
+        conversation_id: int,
+        entity_id: int,
+        role: str = "member",
+    ) -> dict[str, Any]:
+        """Add a participant to an existing conversation."""
+        d = await self._request(
+            "POST",
+            f"/api/v1/conversations/{conversation_id}/participants",
+            json={"entity_id": entity_id, "role": role},
+        )
+        return d or {}
+
     async def update_conversation(self, conversation_id: int, title: str) -> Conversation:
         """Update a conversation's title."""
         d = await self._request(
@@ -196,6 +241,17 @@ class APIClient(TaskMixin):
         """List all memories for a conversation."""
         d = await self._request("GET", f"/api/v1/conversations/{conversation_id}/memories")
         return d.get("memories", []) if d else []
+
+    async def get_conversation_context(self, conversation_id: int) -> dict[str, Any]:
+        """Get memories and prompt for a conversation.
+
+        Returns {"memories": [...], "prompt": "..."}
+        """
+        d = await self._request("GET", f"/api/v1/conversations/{conversation_id}/memories")
+        return {
+            "memories": d.get("memories", []) if d else [],
+            "prompt": d.get("prompt", "") if d else "",
+        }
 
     async def upsert_memory(self, conversation_id: int, key: str, content: str) -> dict[str, Any]:
         """Create or update a memory by key."""

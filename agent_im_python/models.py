@@ -53,6 +53,19 @@ class Message:
     created_at: str = ""
 
 
+    @property
+    def mention_intent(self) -> dict | None:
+        """Extract mention_intent from layers.data if present."""
+        if isinstance(self.layers.data, dict):
+            return self.layers.data.get("mention_intent")
+        return None
+
+    @property
+    def is_handover(self) -> bool:
+        """Check if this message is a task handover."""
+        return self.content_type == "task_handover"
+
+
 @dataclass
 class Bot:
     id: int = 0

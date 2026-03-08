@@ -81,6 +81,7 @@ class Bot:
         self._bot_id: int = 0
         self._api = APIClient(self.base_url, self.token)
         self._key_file = key_file
+        self._bootstrap_token = token  # keep original for fallback
         # Load persisted key if available
         if key_file:
             saved_token = self._load_key(key_file)
@@ -128,8 +129,17 @@ class Bot:
 
     async def start(self):
         """Async entry point — connect and start receiving."""
-        # Verify connectivity
-        me = await self._api.get_me()
+        # Verify connectivity — fallback to bootstrap key if saved key fails
+        try:
+            me = await self._api.get_me()
+        except Exception:
+            if self.token != self._bootstrap_token:
+                logger.warning("bot: saved key failed, falling back to bootstrap key")
+                self.token = self._bootstrap_token
+                self._api.update_token(self._bootstrap_token)
+                me = await self._api.get_me()
+            else:
+                raise
         self._bot_id = me.id
         logger.info("bot: connected as %s (id=%d)", me.name, me.id)
 
@@ -168,9 +178,11 @@ class Bot:
         return None
 
     def _save_key(self, key_file: str, token: str):
-        """Save a permanent key to file."""
+        """Save a permanent key to file (owner-readable only)."""
         try:
-            Path(key_file).write_text(token)
+            p = Path(key_file)
+            p.write_text(token)
+            p.chmod(0o600)
             logger.info("bot: saved permanent key to %s", key_file)
         except Exception:
             logger.exception("bot: failed to save key to %s", key_file)

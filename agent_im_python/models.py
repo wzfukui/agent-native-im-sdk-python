@@ -53,6 +53,10 @@ class Message:
     created_at: str = ""
 
 
+    def is_mentioned(self, entity_id: int) -> bool:
+        """Check if a specific entity was mentioned in this message."""
+        return entity_id in (self.mentioned_entity_ids or [])
+
     @property
     def mention_intent(self) -> dict | None:
         """Extract mention_intent from layers.data if present."""

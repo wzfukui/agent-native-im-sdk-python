@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import os
+from pathlib import Path
 from typing import Callable, Coroutine
 
 from .api import APIClient
@@ -63,18 +65,29 @@ class Bot:
         base_url: str = "http://localhost:9800",
         transport: str = "websocket",
         debug: bool = False,
+        key_file: str | None = ".agent_im_key",
+        filter_by_subscription: bool = True,
     ):
         if debug:
             Bot.enable_debug()
         self.token = token
         self.base_url = base_url.rstrip("/")
         self._transport_type = transport
+        self._filter_by_subscription = filter_by_subscription
         self._handler: Callable[[Context, Message], Coroutine] | None = None
         self._handover_handler: Callable[[Context, Message, dict], Coroutine] | None = None
         self._cancel_handler: Callable[[int, str], Coroutine] | None = None  # (conversation_id, stream_id)
         self._config_handler: Callable[[dict], Coroutine] | None = None
         self._bot_id: int = 0
         self._api = APIClient(self.base_url, self.token)
+        self._key_file = key_file
+        # Load persisted key if available
+        if key_file:
+            saved_token = self._load_key(key_file)
+            if saved_token:
+                self.token = saved_token
+                self._api.update_token(saved_token)
+                logger.info("bot: loaded saved key from %s", key_file)
         self._ws: WSTransport | None = None
         self._polling: PollingTransport | None = None
         self.subscription_config: dict[int, str] = {}  # conversation_id -> subscription_mode
@@ -126,6 +139,7 @@ class Bot:
                 on_message=self._dispatch_message,
                 on_stream=self._dispatch_stream,
                 on_config=self._dispatch_config,
+                on_key_upgrade=self._handle_key_upgrade,
             )
         else:
             self._polling = PollingTransport(self._api)
@@ -141,6 +155,34 @@ class Bot:
             self._polling.stop()
         await self._api.close()
 
+    def _load_key(self, key_file: str) -> str | None:
+        """Load a saved permanent key from file."""
+        try:
+            path = Path(key_file)
+            if path.exists():
+                key = path.read_text().strip()
+                if key.startswith("aim_"):
+                    return key
+        except Exception:
+            logger.debug("bot: could not load key from %s", key_file)
+        return None
+
+    def _save_key(self, key_file: str, token: str):
+        """Save a permanent key to file."""
+        try:
+            Path(key_file).write_text(token)
+            logger.info("bot: saved permanent key to %s", key_file)
+        except Exception:
+            logger.exception("bot: failed to save key to %s", key_file)
+
+    async def _handle_key_upgrade(self, new_token: str):
+        """Handle a key upgrade from bootstrap to permanent."""
+        self.token = new_token
+        self._api.update_token(new_token)
+        if self._key_file:
+            self._save_key(self._key_file, new_token)
+        logger.info("bot: key upgraded to permanent key")
+
     # --- Internal dispatch ---
 
     async def _dispatch_message(self, data: dict):
@@ -151,6 +193,13 @@ class Bot:
         if msg.sender_type == "bot" and msg.sender_id == self._bot_id:
             logger.debug("bot: skipping own message id=%d", msg.id)
             return
+
+        # Auto-filter by subscription mode
+        if self._filter_by_subscription:
+            mode = self.subscription_config.get(msg.conversation_id, "subscribe_all")
+            if mode == "mention_only" and not msg.is_mentioned(self._bot_id):
+                logger.debug("bot: skipping msg id=%d (mention_only, not mentioned)", msg.id)
+                return
 
         logger.debug(
             "bot: incoming msg id=%d conv=%d type=%s from=%s:%d summary=%.60s",

@@ -93,8 +93,9 @@ class AIAgent:
         config: Optional[AgentConfig] = None,
         transport: str = "websocket",
         debug: bool = False,
+        key_file: str | None = ".agent_im_key",
     ):
-        self.bot = Bot(token=token, base_url=base_url, transport=transport, debug=debug)
+        self.bot = Bot(token=token, base_url=base_url, transport=transport, debug=debug, key_file=key_file)
         self.config = config or AgentConfig()
         self.contexts: Dict[int, ConversationContext] = {}
         self.system_prompt: Optional[str] = None
@@ -184,10 +185,7 @@ class AIAgent:
             if not self.config.reply_in_groups:
                 return False
             if self.config.require_mention:
-                # Check if bot was mentioned
-                bot_name = self.config.name.lower()
-                message_lower = msg.layers.summary.lower()
-                if bot_name not in message_lower and f"@{bot_name}" not in message_lower:
+                if not msg.is_mentioned(self.bot._bot_id):
                     return False
 
         return True

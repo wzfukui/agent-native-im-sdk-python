@@ -244,6 +244,25 @@ class Context:
         """Upload and send a file message in the current conversation."""
         await self._api.send_file_message(self.conversation_id, file_path, summary=summary)
 
+    # --- File download ---
+
+    async def download_attachment(self, attachment: dict, dest_dir: str = ".") -> str:
+        """Download an attachment to a local file. Returns the saved file path."""
+        import os
+        url = attachment.get("url", "")
+        filename = attachment.get("filename", "download")
+        logger.debug("ctx: downloading attachment %s to %s", filename, dest_dir)
+        content = await self._api.download_file(url)
+        os.makedirs(dest_dir, exist_ok=True)
+        path = os.path.join(dest_dir, filename)
+        with open(path, "wb") as f:
+            f.write(content)
+        return path
+
+    async def get_attachment_content(self, attachment: dict) -> bytes:
+        """Download an attachment and return its content as bytes."""
+        return await self._api.download_file(attachment.get("url", ""))
+
     # --- Convenience helpers ---
 
     async def stream_status(

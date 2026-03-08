@@ -32,6 +32,7 @@ class WSTransport:
         on_stream: Callable[[str, dict], Coroutine] | None = None,
         on_reconnect: Callable[[], Coroutine] | None = None,
         on_config: Callable[[dict], Coroutine] | None = None,
+        on_key_upgrade: Callable[[str], Coroutine] | None = None,
     ):
         """Main loop: connect, receive, dispatch, auto-reconnect with exponential backoff."""
         self._running = True
@@ -72,6 +73,20 @@ class WSTransport:
                                 await on_message(data)
                             except Exception:
                                 logger.exception("ws: error in message handler")
+                        elif msg_type == "connection.approved":
+                            api_key = data.get("api_key", "")
+                            if api_key and on_key_upgrade:
+                                logger.info("ws: received permanent key, upgrading...")
+                                try:
+                                    await on_key_upgrade(api_key)
+                                    # Update WS reconnect URL with new token
+                                    ws_url = self._url.split("?")[0]
+                                    self._url = f"{ws_url}?token={api_key}"
+                                    logger.info("ws: key upgrade complete, reconnect URL updated")
+                                except Exception:
+                                    logger.exception("ws: error in key upgrade handler")
+                            elif api_key:
+                                logger.warning("ws: received permanent key but no upgrade handler registered")
                         elif msg_type == "message.reaction_updated":
                             if on_stream:
                                 try:

@@ -40,6 +40,10 @@ class APIClient(TaskMixin):
     async def close(self):
         await self._client.aclose()
 
+    def update_token(self, new_token: str):
+        """Update the authorization token dynamically."""
+        self._client.headers["Authorization"] = f"Bearer {new_token}"
+
     # --- Internal helpers ---
 
     async def _request(self, method: str, path: str, **kwargs) -> Any:
@@ -332,6 +336,16 @@ class APIClient(TaskMixin):
             files={"file": (filename, content, mime_type)},
         )
         return d
+
+    async def download_file(self, url: str) -> bytes:
+        """Download a file by URL. Handles relative /files/ paths."""
+        if url.startswith("/files/") or url.startswith("/uploads/"):
+            url = self.base_url + url
+        logger.debug("api: downloading file from %s", url)
+        resp = await self._client.get(url)
+        if resp.status_code >= 400:
+            raise APIError.from_response(resp.status_code, {"ok": False, "error": f"download failed: HTTP {resp.status_code}"})
+        return resp.content
 
     async def send_file_message(
         self,

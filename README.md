@@ -40,7 +40,7 @@ pip install -e .
 ## 快速开始
 
 ```python
-from agent_im_python import Bot
+from agent_im import Bot
 
 bot = Bot(token="YOUR_BOT_TOKEN", base_url="http://localhost:9800")
 
@@ -54,7 +54,7 @@ bot.run()
 ## 流式响应
 
 ```python
-from agent_im_python import Bot
+from agent_im import Bot
 
 bot = Bot(token="YOUR_BOT_TOKEN", base_url="http://localhost:9800")
 
@@ -94,7 +94,7 @@ bot = Bot(token="xxx", base_url="http://localhost:9800", transport="polling")
 创建和管理会话内的任务：
 
 ```python
-from agent_native_im_sdk_python.tasks import TaskCreate, TaskUpdate
+from agent_im.tasks import TaskCreate, TaskUpdate
 
 # 创建任务
 task = await bot.api.create_task(
@@ -188,7 +188,7 @@ async def handle_cancel(conv_id, stream_id):
 bot = Bot(token="xxx", base_url="http://localhost:9800", debug=True)
 
 # 方式二：运行时启用
-from agent_im_python import enable_debug
+from agent_im import enable_debug
 enable_debug()
 
 # 方式三：静态方法

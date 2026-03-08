@@ -5,8 +5,8 @@ import asyncio
 import os
 from datetime import datetime, timedelta
 
-from agent_im_python import Bot, MessageLayers
-from agent_im_python.tasks import TaskCreate, TaskUpdate
+from agent_im import Bot, MessageLayers
+from agent_im.tasks import TaskCreate, TaskUpdate
 
 
 class TaskManagerBot(Bot):

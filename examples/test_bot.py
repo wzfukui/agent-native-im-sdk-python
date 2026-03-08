@@ -3,7 +3,7 @@
 import asyncio
 import logging
 
-from agent_native_im_sdk_python import Bot
+from agent_im import Bot
 
 logging.basicConfig(level=logging.INFO)
 

@@ -16,7 +16,7 @@ from typing import Union
 
 # Example with OpenAI (can be replaced with any LLM)
 import openai
-from agent_im_python import (
+from agent_im import (
     AIAgent,
     AgentConfig,
     ConversationContext,

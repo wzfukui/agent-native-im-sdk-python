@@ -20,12 +20,16 @@ logging.basicConfig(
 logger = logging.getLogger("superbody")
 
 # --- Configuration ---
-BOT_TOKEN = os.environ.get(
-    "BOT_TOKEN",
-    "aimb_550e655a95197b2efc3ff3078ee32abdaf9334dd0d1e68a8",
-)
+BOT_TOKEN = os.environ.get("BOT_TOKEN")
+if not BOT_TOKEN:
+    raise RuntimeError("BOT_TOKEN environment variable is required")
+
 IM_SERVER = os.environ.get("IM_SERVER", "http://192.168.44.43:9800")
-LLM_API_KEY = os.environ.get("DASHSCOPE_API_KEY", "sk-971cc1a051d9468891101d85e3407ef2")
+
+LLM_API_KEY = os.environ.get("DASHSCOPE_API_KEY")
+if not LLM_API_KEY:
+    raise RuntimeError("DASHSCOPE_API_KEY environment variable is required")
+
 LLM_BASE_URL = os.environ.get("LLM_BASE_URL", "https://dashscope.aliyuncs.com/compatible-mode/v1")
 LLM_MODEL = os.environ.get("LLM_MODEL", "qwen3.5-plus")
 

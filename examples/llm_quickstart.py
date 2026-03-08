@@ -9,7 +9,7 @@ Replace the token and base_url with your bot's credentials.
 """
 
 import os
-from agent_im_python import Bot
+from agent_im import Bot
 
 import openai
 

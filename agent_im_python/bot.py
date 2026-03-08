@@ -27,14 +27,45 @@ class Bot:
             await ctx.reply(summary="Hello!")
 
         bot.run()
+
+    Enable debug logging to see trace IDs, API timing, WS traffic::
+
+        bot = Bot(token="xxx", debug=True)
+        # or at any time:
+        Bot.enable_debug()
     """
+
+    @staticmethod
+    def enable_debug():
+        """Enable verbose debug logging for the entire SDK.
+
+        Configures the ``agent_im`` logger hierarchy so all SDK modules
+        (api, ws, bot, context) emit DEBUG-level messages including:
+
+        - API request/response with trace ID, status code, and timing
+        - WebSocket message send/receive
+        - Memory cache hit/miss
+        - Context operations (reply, stream, handover)
+        """
+        sdk_logger = logging.getLogger("agent_im")
+        sdk_logger.setLevel(logging.DEBUG)
+        if not sdk_logger.handlers:
+            handler = logging.StreamHandler()
+            handler.setFormatter(logging.Formatter(
+                "%(asctime)s [%(name)s] %(levelname)s %(message)s",
+                datefmt="%H:%M:%S",
+            ))
+            sdk_logger.addHandler(handler)
 
     def __init__(
         self,
         token: str,
         base_url: str = "http://localhost:9800",
         transport: str = "websocket",
+        debug: bool = False,
     ):
+        if debug:
+            Bot.enable_debug()
         self.token = token
         self.base_url = base_url.rstrip("/")
         self._transport_type = transport
@@ -118,7 +149,15 @@ class Bot:
 
         # Skip own messages
         if msg.sender_type == "bot" and msg.sender_id == self._bot_id:
+            logger.debug("bot: skipping own message id=%d", msg.id)
             return
+
+        logger.debug(
+            "bot: incoming msg id=%d conv=%d type=%s from=%s:%d summary=%.60s",
+            msg.id, msg.conversation_id, msg.content_type or "text",
+            msg.sender_type, msg.sender_id,
+            (msg.layers.summary or "")[:60],
+        )
 
         # Auto-load conversation memories + prompt
         memories, prompt = await self._get_conversation_context(msg.conversation_id)
@@ -176,8 +215,10 @@ class Bot:
     async def _get_conversation_context(self, conv_id: int) -> tuple[dict[str, str], str]:
         """Load memories and prompt for a conversation, using cache."""
         if conv_id in self._memory_cache:
+            logger.debug("bot: context cache hit for conv %d", conv_id)
             return self._memory_cache[conv_id], self._prompt_cache.get(conv_id, "")
 
+        logger.debug("bot: context cache miss for conv %d, fetching...", conv_id)
         try:
             result = await self._api.get_conversation_context(conv_id)
             memories = {}
@@ -189,6 +230,10 @@ class Bot:
             prompt = result.get("prompt", "")
             self._memory_cache[conv_id] = memories
             self._prompt_cache[conv_id] = prompt
+            logger.debug(
+                "bot: loaded context for conv %d: %d memories, prompt=%d chars",
+                conv_id, len(memories), len(prompt),
+            )
             return memories, prompt
         except Exception:
             logger.debug("bot: failed to load context for conv %d", conv_id)

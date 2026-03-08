@@ -2,12 +2,15 @@
 
 from __future__ import annotations
 
+import logging
 import uuid
 from contextlib import asynccontextmanager
 from typing import Any
 
 from .api import APIClient
 from .models import MessageLayers, StatusLayer, _layers_to_dict
+
+logger = logging.getLogger("agent_im.context")
 
 
 class Context:
@@ -54,6 +57,7 @@ class Context:
         interaction=None,
     ) -> None:
         """Send a persisted reply message."""
+        logger.debug("ctx: reply conv=%d summary=%.60s", self.conversation_id, (summary or "")[:60])
         layers = MessageLayers(
             summary=summary,
             thinking=thinking,
@@ -78,6 +82,7 @@ class Context:
     ) -> str:
         """Start a new stream. Returns stream_id."""
         stream_id = uuid.uuid4().hex[:12]
+        logger.debug("ctx: stream_start conv=%d stream=%s phase=%s", self.conversation_id, stream_id, phase)
         layers = MessageLayers(
             status=StatusLayer(phase=phase, progress=progress, text=text),
         )
@@ -97,6 +102,7 @@ class Context:
         phase: str = "processing",
     ) -> None:
         """Send an ephemeral stream update."""
+        logger.debug("ctx: stream_delta conv=%d stream=%s progress=%.1f", self.conversation_id, stream_id, progress)
         layers = MessageLayers(
             summary=summary,
             status=StatusLayer(phase=phase, progress=progress, text=text),
@@ -114,6 +120,7 @@ class Context:
         data: Any = None,
     ) -> None:
         """End a stream (persisted message)."""
+        logger.debug("ctx: stream_end conv=%d stream=%s summary=%.60s", self.conversation_id, stream_id, (summary or "")[:60])
         layers = MessageLayers(summary=summary, data=data)
         if self._send_ws:
             await self._send_ws(
@@ -153,6 +160,7 @@ class Context:
 
         intent_type: "task_assign", "question", "review", or "fyi"
         """
+        logger.debug("ctx: mention conv=%d entities=%s intent=%s", self.conversation_id, entity_ids, intent_type)
         data: dict[str, Any] = {
             "mention_intent": {
                 "type": intent_type,
@@ -186,6 +194,7 @@ class Context:
 
         handover_type: "task_completion", "bug_report", "review_request", "status_report"
         """
+        logger.debug("ctx: handover conv=%d assign_to=%s type=%s", self.conversation_id, assign_to, handover_type)
         handover_data: dict[str, Any] = {
             "handover_type": handover_type,
             "assign_to": assign_to,

@@ -15,8 +15,16 @@ from .errors import AgentIMError, APIError, AuthenticationError
 from .tasks import Task, TaskCreate, TaskUpdate
 from .agent import AIAgent, StreamingAIAgent, AgentConfig, ConversationContext, NO_REPLY
 
+def enable_debug():
+    """Enable verbose debug logging for the entire SDK.
+
+    Convenience shortcut for ``Bot.enable_debug()``.
+    """
+    Bot.enable_debug()
+
 __all__ = [
     "Bot",
+    "enable_debug",
     "BotInfo",
     "Context",
     "StreamContext",

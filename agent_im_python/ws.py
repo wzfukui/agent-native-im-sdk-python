@@ -60,10 +60,12 @@ class WSTransport:
                         try:
                             envelope = json.loads(raw)
                         except json.JSONDecodeError:
+                            logger.debug("ws: received non-JSON frame, skipping")
                             continue
 
                         msg_type = envelope.get("type", "")
                         data = envelope.get("data", {})
+                        logger.debug("ws: recv type=%s data_keys=%s", msg_type, list(data.keys()) if isinstance(data, dict) else "?")
 
                         if msg_type == "message.new":
                             try:
@@ -132,6 +134,7 @@ class WSTransport:
         if self._ws is None:
             raise RuntimeError("WebSocket not connected")
         envelope = json.dumps({"type": msg_type, "data": data})
+        logger.debug("ws: send type=%s data_keys=%s", msg_type, list(data.keys()))
         await self._ws.send(envelope)
 
     async def send_message(

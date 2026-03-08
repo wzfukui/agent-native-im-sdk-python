@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import logging
+import time
+import uuid
 from typing import Any
 
 import os
@@ -9,6 +12,8 @@ import os
 import httpx
 
 from .errors import APIError, AuthenticationError
+
+logger = logging.getLogger("agent_im.api")
 from .models import (
     Bot,
     Conversation,
@@ -38,11 +43,37 @@ class APIClient(TaskMixin):
     # --- Internal helpers ---
 
     async def _request(self, method: str, path: str, **kwargs) -> Any:
+        # Generate trace ID for full-chain tracing
+        trace_id = uuid.uuid4().hex[:16]
+        if "headers" not in kwargs:
+            kwargs["headers"] = {}
+        kwargs["headers"]["X-Request-ID"] = trace_id
+
+        t0 = time.monotonic()
         resp = await self._client.request(method, path, **kwargs)
+        elapsed_ms = (time.monotonic() - t0) * 1000
+
         try:
             body = resp.json()
         except ValueError:
             body = {"ok": False, "error": resp.text or f"HTTP {resp.status_code}"}
+
+        # Extract server-assigned request ID if present
+        server_req_id = ""
+        if isinstance(body.get("error"), dict):
+            server_req_id = body["error"].get("request_id", "")
+
+        if resp.status_code >= 400:
+            logger.debug(
+                "api: %s %s → %d (%.0fms) trace=%s req=%s",
+                method, path, resp.status_code, elapsed_ms,
+                trace_id, server_req_id or "-",
+            )
+        else:
+            logger.debug(
+                "api: %s %s → %d (%.0fms) trace=%s",
+                method, path, resp.status_code, elapsed_ms, trace_id,
+            )
 
         if resp.status_code == 401:
             raise AuthenticationError()
@@ -51,7 +82,6 @@ class APIClient(TaskMixin):
         if resp.status_code >= 400:
             raise APIError.from_response(resp.status_code, body)
         if not body.get("ok"):
-            # Use new structured error handling (v2.3+ compatible)
             raise APIError.from_response(resp.status_code, body)
         return body.get("data")
 

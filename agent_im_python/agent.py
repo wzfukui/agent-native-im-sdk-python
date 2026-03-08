@@ -92,8 +92,9 @@ class AIAgent:
         base_url: str,
         config: Optional[AgentConfig] = None,
         transport: str = "websocket",
+        debug: bool = False,
     ):
-        self.bot = Bot(token=token, base_url=base_url, transport=transport)
+        self.bot = Bot(token=token, base_url=base_url, transport=transport, debug=debug)
         self.config = config or AgentConfig()
         self.contexts: Dict[int, ConversationContext] = {}
         self.system_prompt: Optional[str] = None

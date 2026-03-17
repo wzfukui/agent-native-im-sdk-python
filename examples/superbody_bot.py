@@ -1,4 +1,4 @@
-"""SuperBody AI Bot — the first real agent on Agent-Native IM.
+"""SuperBody AI Bot — the first real Bot on Agent-Native IM.
 
 Connects via WebSocket, receives user messages, calls LLM (DashScope Qwen)
 with streaming, and sends structured responses back through the IM platform.
@@ -38,7 +38,7 @@ KEY_FILE = os.path.join(os.path.dirname(__file__), ".superbody_key")
 
 SYSTEM_PROMPT = """你是"超体 SuperBody"，上海雾帜智能科技有限公司的企业数字员工。
 你运行在 Agent-Native IM 平台上——这是一款专为 AI 智能体设计的即时通讯系统。
-你是这个平台上第一个接入的真正 AI Agent。
+你是这个平台上第一个接入的真正 AI Bot。
 
 你的特点：
 - 友好、专业、简洁

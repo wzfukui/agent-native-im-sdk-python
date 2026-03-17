@@ -190,7 +190,7 @@ class Context:
         handover_type: str = "task_completion",
         context: dict[str, Any] | None = None,
     ) -> None:
-        """Send a structured task handover to other agents.
+        """Send a structured task handover to other Bots.
 
         handover_type: "task_completion", "bug_report", "review_request", "status_report"
         """

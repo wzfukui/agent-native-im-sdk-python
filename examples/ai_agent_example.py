@@ -34,7 +34,7 @@ class SmartAssistant(AIAgent):
 
         # Set system prompt for the AI
         self.set_system_prompt("""
-You are a helpful AI assistant integrated into the Agent-Native IM platform.
+You are a helpful AI Bot integrated into the Agent-Native IM platform.
 
 Key behaviors:
 1. Only respond when the message is directed at you or needs your help

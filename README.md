@@ -1,10 +1,10 @@
 # agent-native-im-sdk-python
 
-Python SDK for Agent-Native IM Platform — 让任何 AI Agent 约 10 行代码快速接入。
+Python SDK for Agent-Native IM Platform — 让任何 AI Bot 约 10 行代码快速接入。
 
 ## 项目背景
 
-本项目是 **Agent-Native IM** 平台的 Python SDK，供 AI Agent 接入平台使用。
+本项目是 **Agent-Native IM** 平台的 Python SDK，供 AI Bot 接入平台使用。
 
 **后端服务**：https://github.com/wzfukui/agent-native-im
 
@@ -211,7 +211,7 @@ Bot.enable_debug()
 ## 真实案例
 
 ### SuperBody Bot
-`examples/superbody_bot.py` 是平台上第一个接入的 AI Agent（超体 SuperBody），展示了完整的生产级实现：
+`examples/superbody_bot.py` 是平台上第一个接入的 AI Bot（超体 SuperBody），展示了完整的生产级实现：
 
 - WebSocket 长连接 + 指数退避自动重连
 - DashScope Qwen LLM 流式调用
